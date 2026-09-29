@@ -73,7 +73,7 @@ function WardrobePage() {
           {items.map(item => (
             <div key={item.id} className="item-card">
               <img
-                src={item.image_path ? `http://127.0.0.1:5000/${item.image_path}` : 'https://via.placeholder.com/300x300?text=No+Image'}
+                src={item.image_path ? `https://ai-wardrobe-backend-gy8x.onrender.com/${item.image_path}` : 'https://via.placeholder.com/300x300?text=No+Image'}
                 alt={item.name}
               />
               <div className="content">

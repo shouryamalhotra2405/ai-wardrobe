@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://127.0.0.1:5000/api';
+const API_BASE = 'https://ai-wardrobe-backend-gy8x.onrender.com/api';
 
 export const addClothingItem = async (formData) => {
   const res = await axios.post(`${API_BASE}/wardrobe/add`, formData, {
