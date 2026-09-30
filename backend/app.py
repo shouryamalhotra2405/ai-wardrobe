@@ -14,7 +14,9 @@ def create_app():
     
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
-    CORS(app)
+    # Allow all origins (Vercel, Mobile, Localhost)
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    
     db.init_app(app)
     
     # Register blueprints
@@ -34,7 +36,6 @@ def create_app():
     
     return app
 
-# Expose app for Gunicorn web server
 app = create_app()
 
 if __name__ == '__main__':
