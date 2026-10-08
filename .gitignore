@@ -7,7 +7,7 @@ backend/instance/
 
 # Ignore Node.js Dependencies
 frontend/node_modules/
-frontend/build/
+
 .env
 
 # OS junk

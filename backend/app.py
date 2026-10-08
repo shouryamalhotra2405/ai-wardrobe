@@ -10,11 +10,10 @@ from routes.auth_routes import auth_bp
 from routes.wardrobe_routes import wardrobe_bp
 from routes.suggestion_routes import suggestion_bp
 
-# Tell Flask where the React compiled build folder is
+# Path to local compiled React build folder
 frontend_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'build')
 
 def create_app():
-    # Setup Flask to serve static files from React
     app = Flask(__name__, static_folder=frontend_folder, static_url_path='')
     
     db_url = os.getenv('DATABASE_URL', 'sqlite:///wardrobe.db')
@@ -23,6 +22,9 @@ def create_app():
         
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+    
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
     CORS(app)
     db.init_app(app)
@@ -32,7 +34,7 @@ def create_app():
     app.register_blueprint(wardrobe_bp, url_prefix='/api/wardrobe')
     app.register_blueprint(suggestion_bp, url_prefix='/api/suggestions')
     
-    # NEW: Catch-all route to serve the React App for any non-API URL
+    # Serve React SPA Frontend
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_react(path):
