@@ -22,14 +22,30 @@ def create_app():
     db_url = os.getenv('DATABASE_URL', '')
     
     if db_url:
-        # Convert postgres:// or postgresql:// to use psycopg2 driver explicitly
+        # Convert postgres:// to postgresql+psycopg2://
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
         elif db_url.startswith("postgresql://") and "+psycopg" not in db_url:
             db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-            
-        # Clean up unsupported URL params
+        
+        # 🛠️ CRITICAL FIX: Remove '-pooler' from Neon host so SQLAlchemy uses Direct SSL Connection
+        db_url = db_url.replace("-pooler.", ".")
+        
+        # Remove unsupported channel_binding params
         db_url = re.sub(r'[&?]channel_binding=[^&]*', '', db_url)
+        
+        # Ensure sslmode=require
+        if 'sslmode=' not in db_url:
+            sep = '&' if '?' in db_url else '?'
+            db_url = f"{db_url}{sep}sslmode=require"
+        
+        # Engine config for Neon Direct Connection
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,    # Test connection before running query
+            'pool_recycle': 60,       # Recycle connections every 60s
+            'pool_timeout': 30,
+            'max_overflow': 10
+        }
     else:
         db_url = f"sqlite:///{os.path.join(app.instance_path, 'wardrobe.db')}"
         
@@ -66,9 +82,9 @@ def create_app():
     with app.app_context():
         try:
             db.create_all()
-            print("✅ Database connected & tables initialized successfully!")
+            print("✅ Neon PostgreSQL Direct Connection established!")
         except Exception as e:
-            print(f"⚠️ Database initialization notice: {e}")
+            print(f"⚠️ Database init notice: {e}")
     
     return app
 

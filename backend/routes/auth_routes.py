@@ -4,9 +4,21 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from models.clothing import User
 from database.db import db
+from sqlalchemy.exc import OperationalError, DBAPIError
 
 auth_bp = Blueprint('auth', __name__)
 JWT_SECRET = os.getenv('JWT_SECRET', 'shourya_wardrobe_secret_9988')
+
+def safe_db_execute(func):
+    """Decorator to retry DB query if Neon dropped the connection"""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except (OperationalError, DBAPIError) as e:
+            print("🔄 Stale DB connection detected. Retrying...")
+            db.session.rollback()
+            return func(*args, **kwargs)
+    return wrapper
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -22,7 +34,13 @@ def register():
         if len(password) < 4:
             return jsonify({'message': 'Password must be at least 4 characters'}), 400
 
-        existing = User.query.filter_by(email=email).first()
+        # Safe lookup with fallback rollback
+        try:
+            existing = User.query.filter_by(email=email).first()
+        except Exception:
+            db.session.rollback()
+            existing = User.query.filter_by(email=email).first()
+
         if existing:
             return jsonify({'message': 'Email already registered. Please log in.'}), 400
 
@@ -32,7 +50,6 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        # Generate JWT Token so user logs in immediately upon registration
         token = jwt.encode({
             'user_id': user.id,
             'exp': datetime.utcnow() + timedelta(days=30)
@@ -50,7 +67,7 @@ def register():
     except Exception as e:
         db.session.rollback()
         print(f"Register error: {e}")
-        return jsonify({'message': f'Server error: {str(e)}'}), 500
+        return jsonify({'message': f'Registration failed: {str(e)}'}), 500
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -63,7 +80,11 @@ def login():
         if not email or not password:
             return jsonify({'message': 'Email and password are required'}), 400
 
-        user = User.query.filter_by(email=email).first()
+        try:
+            user = User.query.filter_by(email=email).first()
+        except Exception:
+            db.session.rollback()
+            user = User.query.filter_by(email=email).first()
 
         if not user or not user.check_password(password):
             return jsonify({'message': 'Invalid email or password'}), 401
@@ -83,5 +104,6 @@ def login():
         }), 200
 
     except Exception as e:
+        db.session.rollback()
         print(f"Login error: {e}")
-        return jsonify({'message': f'Server error: {str(e)}'}), 500
+        return jsonify({'message': f'Login failed: {str(e)}'}), 500
