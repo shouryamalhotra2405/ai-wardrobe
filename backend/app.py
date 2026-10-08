@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -15,10 +16,21 @@ build_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build')
 def create_app():
     app = Flask(__name__, static_folder=build_folder, static_url_path='')
     
-    # Get database URL safely
-    db_url = os.getenv('DATABASE_URL', 'sqlite:///wardrobe.db')
-    if db_url and db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    # Ensure Flask instance directory exists for SQLite fallback
+    os.makedirs(app.instance_path, exist_ok=True)
+    
+    # Get and sanitize DATABASE_URL
+    db_url = os.getenv('DATABASE_URL', '')
+    
+    if db_url:
+        # Convert legacy postgres:// to postgresql://
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        # Remove unsupported channel_binding parameters if present
+        db_url = re.sub(r'[&?]channel_binding=[^&]*', '', db_url)
+    else:
+        # Fallback to local SQLite inside instance folder
+        db_url = f"sqlite:///{os.path.join(app.instance_path, 'wardrobe.db')}"
         
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -38,18 +50,18 @@ def create_app():
     def health_check():
         return jsonify({'status': 'healthy', 'message': 'AI Wardrobe SaaS Server is Active!'}), 200
 
-    # Serve React Website safely
+    # Serve React Frontend
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve(path):
         if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)
         else:
-            if os.path.exists(os.path.join(app.static_folder, 'index.html')):
+            index_path = os.path.join(app.static_folder, 'index.html')
+            if os.path.exists(index_path):
                 return send_from_directory(app.static_folder, 'index.html')
-            return jsonify({'message': 'API is active. Frontend build loading.'}), 200
+            return jsonify({'message': 'API running.'}), 200
 
-    # Safe database initialization (won't crash server startup)
     with app.app_context():
         try:
             db.create_all()
