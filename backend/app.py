@@ -16,20 +16,21 @@ build_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build')
 def create_app():
     app = Flask(__name__, static_folder=build_folder, static_url_path='')
     
-    # Ensure Flask instance directory exists for SQLite fallback
     os.makedirs(app.instance_path, exist_ok=True)
     
     # Get and sanitize DATABASE_URL
     db_url = os.getenv('DATABASE_URL', '')
     
     if db_url:
-        # Convert legacy postgres:// to postgresql://
+        # Convert postgres:// or postgresql:// to use psycopg2 driver explicitly
         if db_url.startswith("postgres://"):
-            db_url = db_url.replace("postgres://", "postgresql://", 1)
-        # Remove unsupported channel_binding parameters if present
+            db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif db_url.startswith("postgresql://") and "+psycopg" not in db_url:
+            db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            
+        # Clean up unsupported URL params
         db_url = re.sub(r'[&?]channel_binding=[^&]*', '', db_url)
     else:
-        # Fallback to local SQLite inside instance folder
         db_url = f"sqlite:///{os.path.join(app.instance_path, 'wardrobe.db')}"
         
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
