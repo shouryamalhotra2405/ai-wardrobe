@@ -1,30 +1,12 @@
 import axios from 'axios';
-
 const API_BASE = 'https://ai-wardrobe-backend-gy8x.onrender.com/api';
 
-export const addClothingItem = async (formData) => {
-  const res = await axios.post(`${API_BASE}/wardrobe/add`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  return res.data;
-};
+const authHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-export const getAllClothing = async () => {
-  const res = await axios.get(`${API_BASE}/wardrobe/all`);
-  return res.data;
-};
-
-export const deleteClothingItem = async (id) => {
-  const res = await axios.delete(`${API_BASE}/wardrobe/delete/${id}`);
-  return res.data;
-};
-
-export const getOutfitSuggestions = async (occasion, season) => {
-  const res = await axios.post(`${API_BASE}/suggestions/outfit`, { occasion, season });
-  return res.data;
-};
-
-export const getWardrobeStats = async () => {
-  const res = await axios.get(`${API_BASE}/wardrobe/stats`);
-  return res.data;
-};
+export const loginUser = (data) => axios.post(`${API_BASE}/auth/login`, data);
+export const registerUser = (data) => axios.post(`${API_BASE}/auth/register`, data);
+export const getAllClothing = () => axios.get(`${API_BASE}/wardrobe/all`, authHeader());
+export const addClothingItem = (data) => axios.post(`${API_BASE}/wardrobe/add`, data, {
+    headers: { ...authHeader().headers, 'Content-Type': 'multipart/form-data' }
+});
+export const getOutfitSuggestions = (occ) => axios.post(`${API_BASE}/suggestions/outfit`, { occasion: occ }, authHeader());
