@@ -1,12 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { loginUser, registerUser, getAllClothing, addClothingItem, deleteClothingItem, getOutfitSuggestions } from './api';
 import './App.css';
 
-// ── Navbar Component ──
+// ── OPTION 6: CINEMATIC BOKEH LIGHT PARTICLES ──
+function BokehBackground() {
+  const particles = useMemo(() => {
+    const colors = [
+      'rgba(99, 102, 241, ',   // Indigo
+      'rgba(168, 85, 247, ',  // Purple
+      'rgba(236, 72, 153, ',  // Pink
+      'rgba(56, 189, 248, ',  // Cyan
+      'rgba(192, 132, 252, '  // Violet
+    ];
+
+    return Array.from({ length: 18 }).map((_, i) => {
+      const size = Math.floor(Math.random() * 120) + 40;
+      const left = Math.floor(Math.random() * 100);
+      const colorPrefix = colors[i % colors.length];
+      const opacity = (Math.random() * 0.3 + 0.12).toFixed(2);
+      const blur = Math.floor(Math.random() * 35) + 25;
+      const duration = Math.floor(Math.random() * 14) + 11;
+      const delay = (Math.random() * -22).toFixed(1);
+
+      return {
+        id: i,
+        style: {
+          width: `${size}px`,
+          height: `${size}px`,
+          left: `${left}vw`,
+          backgroundColor: `${colorPrefix}${opacity})`,
+          boxShadow: `0 0 ${size / 2}px ${colorPrefix}${opacity})`,
+          filter: `blur(${blur}px)`,
+          animationDuration: `${duration}s`,
+          animationDelay: `${delay}s`,
+          '--particle-opacity': opacity
+        }
+      };
+    });
+  }, []);
+
+  return (
+    <div className="bokeh-container">
+      {particles.map(p => (
+        <div key={p.id} className="bokeh-particle" style={p.style} />
+      ))}
+    </div>
+  );
+}
+
+// ── Navbar ──
 function Navbar({ user, onLogout }) {
   const location = useLocation();
-  const isActive = (path) => location.pathname === path ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : {};
+  const isActive = (path) => location.pathname === path ? { background: 'rgba(255,255,255,0.2)', color: '#fff' } : {};
 
   return (
     <nav className="navbar">
@@ -16,7 +62,7 @@ function Navbar({ user, onLogout }) {
           <Link to="/" style={isActive('/')}>My Wardrobe</Link>
           <Link to="/add" style={isActive('/add')}>Add Clothes</Link>
           <Link to="/suggest" style={isActive('/suggest')}>Get Outfit</Link>
-          <button onClick={onLogout} className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
+          <button onClick={onLogout} className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
             Logout ({user.name})
           </button>
         </div>
@@ -25,7 +71,7 @@ function Navbar({ user, onLogout }) {
   );
 }
 
-// ── Auth Page (Login / Register) ──
+// ── Auth Page ──
 function AuthPage({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -42,96 +88,49 @@ function AuthPage({ onLoginSuccess }) {
         const res = await loginUser({ email: form.email, password: form.password });
         onLoginSuccess(res.data.user, res.data.token);
       } else {
-        const res = await registerUser({
-          name: form.name,
-          email: form.email,
-          password: form.password
-        });
-        // Auto switch to login after successful signup
-        setError('');
-        alert('✅ Account created! Please log in now.');
+        await registerUser(form);
+        alert('✅ Account created! Please log in.');
         setIsLogin(true);
         setForm({ name: '', email: form.email, password: '' });
       }
     } catch (err) {
-      console.error('Auth error:', err);
-      const msg = err.response?.data?.message || err.response?.data?.error || 'Server error. Please try again.';
-      setError(msg);
+      setError(err.response?.data?.message || 'Authentication failed.');
     }
     setLoading(false);
   };
 
   return (
-    <div className="auth-wrapper">
-      {/* Animated Background Orbs */}
-      <div className="bg-orb orb-1"></div>
-      <div className="bg-orb orb-2"></div>
-      <div className="bg-orb orb-3"></div>
-
-      <div className="auth-card card">
-        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#a855f7' }}>
+    <div className="container" style={{ maxWidth: '420px', marginTop: '3rem' }}>
+      <div className="card">
+        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#c084fc' }}>
           {isLogin ? '🔐 Login' : '📝 Create Account'}
         </h2>
 
-        {error && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            color: '#fca5a5',
-            padding: '0.8rem',
-            borderRadius: '10px',
-            marginBottom: '1rem',
-            fontSize: '0.9rem',
-            border: '1px solid rgba(239, 68, 68, 0.3)'
-          }}>
-            {error}
-          </div>
-        )}
+        {error && <div className="error-msg">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           {!isLogin && (
             <div className="form-group">
               <label>Name</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="Name"
-                required
-              />
+              <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" required />
             </div>
           )}
           <div className="form-group">
             <label>Email</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-              placeholder="Email"
-              required
-            />
+            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email" required />
           </div>
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-              placeholder="Password"
-              required
-            />
+            <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="Password" required />
           </div>
-
-          <button type="submit" className="btn" style={{ width: '100%', marginTop: '0.5rem' }} disabled={loading}>
+          <button type="submit" className="btn" style={{ width: '100%' }} disabled={loading}>
             {loading ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
           </button>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.9rem', color: '#94a3b8' }}>
           {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <span
-            style={{ color: '#a855f7', fontWeight: 700, cursor: 'pointer' }}
-            onClick={() => { setIsLogin(!isLogin); setError(''); }}
-          >
+          <span style={{ color: '#c084fc', fontWeight: 700, cursor: 'pointer' }} onClick={() => { setIsLogin(!isLogin); setError(''); }}>
             {isLogin ? 'Sign Up' : 'Login'}
           </span>
         </p>
@@ -140,7 +139,7 @@ function AuthPage({ onLoginSuccess }) {
   );
 }
 
-// ── 1. My Wardrobe Page ──
+// ── Wardrobe Page ──
 function WardrobePage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,7 +156,7 @@ function WardrobePage() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this item from your private wardrobe?')) {
+    if (window.confirm('Delete this item?')) {
       await deleteClothingItem(id);
       loadItems();
     }
@@ -165,15 +164,14 @@ function WardrobePage() {
 
   return (
     <div className="container">
-      <h2 className="page-title">👔 Private Wardrobe <span style={{ color: '#7c3aed' }}>({items.length} Items)</span></h2>
+      <h2 className="page-title">👔 Private Wardrobe <span style={{ color: '#c084fc' }}>({items.length} Items)</span></h2>
 
       {loading ? (
-        <div className="card empty-state">Loading your permanent wardrobe...</div>
+        <div className="card empty-state">Loading...</div>
       ) : items.length === 0 ? (
         <div className="card empty-state">
           <span className="emoji">👕</span>
           <h3>Your wardrobe is empty</h3>
-          <p style={{ marginTop: '0.5rem' }}>Add your clothes to save them permanently in the cloud!</p>
           <br />
           <Link to="/add"><button className="btn">➕ Add First Item</button></Link>
         </div>
@@ -181,13 +179,19 @@ function WardrobePage() {
         <div className="grid">
           {items.map(item => (
             <div key={item.id} className="item-card">
-              <img src={item.image_url || 'https://via.placeholder.com/300x300?text=No+Image'} alt={item.name} />
+              <img
+                src={item.image_url || 'https://via.placeholder.com/300x300?text=No+Photo'}
+                alt={item.name}
+                onError={(e) => { e.target.src = 'https://via.placeholder.com/300x300?text=No+Photo'; }}
+              />
               <div className="content">
                 <h4>{item.name}</h4>
                 <p className="meta">{item.color_primary} • {item.occasion}</p>
-                <span className="badge badge-top">{item.category}</span>
+                <span className="badge">{item.category}</span>
                 <br /><br />
-                <button onClick={() => handleDelete(item.id)} className="btn btn-danger" style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}>Delete</button>
+                <button onClick={() => handleDelete(item.id)} className="btn btn-danger" style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}>
+                  Delete
+                </button>
               </div>
             </div>
           ))}
@@ -197,9 +201,9 @@ function WardrobePage() {
   );
 }
 
-// ── 2. Add Clothing Page ──
+// ── Add Clothing Page ──
 function AddClothingPage() {
-  const [form, setForm] = useState({ name: '', category: 'top', color_primary: 'black', occasion: 'casual', season: 'all-season' });
+  const [form, setForm] = useState({ name: '', category: 'top', color_primary: 'black', occasion: 'casual' });
   const [file, setFile] = useState(null);
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -216,10 +220,10 @@ function AddClothingPage() {
       if (file) formData.append('image', file);
 
       await addClothingItem(formData);
-      setMsg('✅ Clothing saved permanently to cloud database!');
-      setTimeout(() => navigate('/'), 1200);
+      setMsg('✅ Saved permanently to cloud!');
+      setTimeout(() => navigate('/'), 1000);
     } catch (err) {
-      setMsg('❌ Failed to add item. Check connection.');
+      setMsg('❌ Failed to add item.');
     }
     setLoading(false);
   };
@@ -228,22 +232,22 @@ function AddClothingPage() {
     <div className="container" style={{ maxWidth: '580px' }}>
       <h2 className="page-title">➕ Add New Clothes</h2>
       <div className="card">
-        {msg && <div className="success-msg">{msg}</div>}
+        {msg && <div className={msg.includes('✅') ? 'success-msg' : 'error-msg'}>{msg}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Clothing Name *</label>
-            <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Navy Shirt" required />
+            <label>Name *</label>
+            <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" required />
           </div>
           <div className="form-group">
             <label>Category *</label>
             <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-              <option value="top">👕 Top (Shirt / T-Shirt / Hoodie)</option>
-              <option value="bottom">👖 Bottom (Jeans / Pants)</option>
-              <option value="shoes">👟 Shoes / Footwear</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+              <option value="shoes">Shoes</option>
             </select>
           </div>
           <div className="form-group">
-            <label>Primary Color *</label>
+            <label>Color *</label>
             <select value={form.color_primary} onChange={e => setForm({ ...form, color_primary: e.target.value })}>
               <option value="black">Black</option>
               <option value="white">White</option>
@@ -260,17 +264,17 @@ function AddClothingPage() {
             <label>Occasion</label>
             <select value={form.occasion} onChange={e => setForm({ ...form, occasion: e.target.value })}>
               <option value="casual">Casual</option>
-              <option value="formal">Formal / Office</option>
-              <option value="party">Party / Event</option>
-              <option value="sports">Sports / Gym</option>
+              <option value="formal">Formal</option>
+              <option value="party">Party</option>
+              <option value="sports">Sports</option>
             </select>
           </div>
           <div className="form-group">
-            <label>Photo (Uploaded to Permanent Cloud)</label>
+            <label>Photo</label>
             <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} />
           </div>
-          <button type="submit" className="btn" disabled={loading} style={{ width: '100%', marginTop: '0.5rem' }}>
-            {loading ? 'Uploading to Cloud...' : '✨ Add to Permanent Wardrobe'}
+          <button type="submit" className="btn" style={{ width: '100%' }} disabled={loading}>
+            {loading ? 'Uploading...' : '✨ Add to Wardrobe'}
           </button>
         </form>
       </div>
@@ -278,17 +282,16 @@ function AddClothingPage() {
   );
 }
 
-// ── 3. AI Suggestion Page ──
+// ── Suggestion Page ──
 function SuggestionPage() {
   const [occasion, setOccasion] = useState('casual');
-  const [season, setSeason] = useState('all-season');
   const [outfits, setOutfits] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const handleSuggest = async () => {
     setLoading(true);
     try {
-      const res = await getOutfitSuggestions(occasion, season);
+      const res = await getOutfitSuggestions(occasion);
       setOutfits(res.data.suggestions || []);
     } catch (err) { console.error(err); }
     setLoading(false);
@@ -298,45 +301,36 @@ function SuggestionPage() {
     <div className="container">
       <h2 className="page-title">🤖 AI Outfit Stylist</h2>
       <div className="card">
-        <div className="controls-row">
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Occasion</label>
-            <select value={occasion} onChange={e => setOccasion(e.target.value)}>
-              <option value="casual">😎 Casual Outing</option>
-              <option value="formal">💼 Formal / Office</option>
-              <option value="party">🎉 Party / Event</option>
-            </select>
-          </div>
+        <div className="form-group">
+          <label>Occasion</label>
+          <select value={occasion} onChange={e => setOccasion(e.target.value)}>
+            <option value="casual">Casual</option>
+            <option value="formal">Formal</option>
+            <option value="party">Party</option>
+          </select>
         </div>
-        <button onClick={handleSuggest} className="btn" disabled={loading} style={{ marginTop: '1rem' }}>
-          {loading ? 'Thinking...' : '✨ Get Personal Outfit Suggestions'}
+        <button onClick={handleSuggest} className="btn" disabled={loading}>
+          {loading ? 'Thinking...' : '✨ Get Outfit Suggestions'}
         </button>
       </div>
 
-      {outfits.length === 0 && !loading && (
-        <div className="card empty-state">
-          <span className="emoji">👗</span>
-          <p>Select an occasion and click the button to get styled by AI!</p>
-        </div>
-      )}
-
       {outfits.map((o, idx) => (
         <div key={idx} className="card outfit-box">
-          <h3 style={{ color: '#4f46e5' }}>Outfit #{idx + 1} (Score: {o.score}/100)</h3>
-          <p>👕 <b>Top:</b> {o.top?.name} ({o.top?.color_primary})</p>
-          <p>👖 <b>Bottom:</b> {o.bottom?.name} ({o.bottom?.color_primary})</p>
-          {o.shoes && <p>👟 <b>Shoes:</b> {o.shoes.name} ({o.shoes.color_primary})</p>}
+          <h3 style={{ color: '#c084fc' }}>Outfit #{idx + 1}</h3>
+          <p>👕 Top: {o.top?.name} ({o.top?.color_primary})</p>
+          <p>👖 Bottom: {o.bottom?.name} ({o.bottom?.color_primary})</p>
+          {o.shoes && <p>👟 Shoes: {o.shoes.name} ({o.shoes.color_primary})</p>}
         </div>
       ))}
     </div>
   );
 }
 
-// ── Main App Router ──
+// ── Main App ──
 export default function App() {
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
   });
 
   const handleLoginSuccess = (userData, token) => {
@@ -346,20 +340,17 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.clear();
     setUser(null);
   };
 
   return (
     <Router>
+      <BokehBackground />
       <Navbar user={user} onLogout={handleLogout} />
       <Routes>
         {!user ? (
-          <>
-            <Route path="/auth" element={<AuthPage onLoginSuccess={handleLoginSuccess} />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
-          </>
+          <Route path="*" element={<AuthPage onLoginSuccess={handleLoginSuccess} />} />
         ) : (
           <>
             <Route path="/" element={<WardrobePage />} />
