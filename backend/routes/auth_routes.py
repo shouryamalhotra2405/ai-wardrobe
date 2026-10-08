@@ -24,7 +24,7 @@ def register():
 
         existing = User.query.filter_by(email=email).first()
         if existing:
-            return jsonify({'message': 'Email already registered. Please login.'}), 400
+            return jsonify({'message': 'Email already registered. Please log in.'}), 400
 
         user = User(name=name, email=email)
         user.set_password(password)
@@ -32,8 +32,18 @@ def register():
         db.session.add(user)
         db.session.commit()
 
+        # Generate JWT Token so user logs in immediately upon registration
+        token = jwt.encode({
+            'user_id': user.id,
+            'exp': datetime.utcnow() + timedelta(days=30)
+        }, JWT_SECRET, algorithm='HS256')
+
+        if isinstance(token, bytes):
+            token = token.decode('utf-8')
+
         return jsonify({
             'message': 'Account created successfully!',
+            'token': token,
             'user': {'id': user.id, 'name': user.name, 'email': user.email}
         }), 201
 
@@ -60,10 +70,9 @@ def login():
 
         token = jwt.encode({
             'user_id': user.id,
-            'exp': datetime.utcnow() + timedelta(days=7)
+            'exp': datetime.utcnow() + timedelta(days=30)
         }, JWT_SECRET, algorithm='HS256')
 
-        # PyJWT may return bytes in some versions
         if isinstance(token, bytes):
             token = token.decode('utf-8')
 
