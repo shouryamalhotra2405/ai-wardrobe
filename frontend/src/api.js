@@ -1,5 +1,7 @@
 import axios from 'axios';
-const API_BASE = 'https://ai-wardrobe-backend-gy8x.onrender.com/api';
+
+// CHANGE THIS LINE: React will now ask its own host server for the API
+const API_BASE = '/api';
 
 const authHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
@@ -9,4 +11,5 @@ export const getAllClothing = () => axios.get(`${API_BASE}/wardrobe/all`, authHe
 export const addClothingItem = (data) => axios.post(`${API_BASE}/wardrobe/add`, data, {
     headers: { ...authHeader().headers, 'Content-Type': 'multipart/form-data' }
 });
-export const getOutfitSuggestions = (occ) => axios.post(`${API_BASE}/suggestions/outfit`, { occasion: occ }, authHeader());
+export const deleteClothingItem = (id) => axios.delete(`${API_BASE}/wardrobe/delete/${id}`, authHeader());
+export const getOutfitSuggestions = (occ, season) => axios.post(`${API_BASE}/suggestions/outfit`, { occasion: occ, season: season }, authHeader());
