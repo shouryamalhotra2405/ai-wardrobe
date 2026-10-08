@@ -10,11 +10,11 @@ from routes.auth_routes import auth_bp
 from routes.wardrobe_routes import wardrobe_bp
 from routes.suggestion_routes import suggestion_bp
 
-# Path to local compiled React build folder
-frontend_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'build')
+# Path to the build folder right next to app.py
+build_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build')
 
 def create_app():
-    app = Flask(__name__, static_folder=frontend_folder, static_url_path='')
+    app = Flask(__name__, static_folder=build_folder, static_url_path='')
     
     db_url = os.getenv('DATABASE_URL', 'sqlite:///wardrobe.db')
     if db_url.startswith("postgres://"):
@@ -34,10 +34,10 @@ def create_app():
     app.register_blueprint(wardrobe_bp, url_prefix='/api/wardrobe')
     app.register_blueprint(suggestion_bp, url_prefix='/api/suggestions')
     
-    # Serve React SPA Frontend
+    # Serve React Website
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
-    def serve_react(path):
+    def serve(path):
         if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)
         else:
