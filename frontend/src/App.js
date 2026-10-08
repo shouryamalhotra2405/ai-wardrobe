@@ -38,57 +38,100 @@ function AuthPage({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      let res;
       if (isLogin) {
-        res = await loginUser({ email: form.email, password: form.password });
-      } else {
-        res = await registerUser(form);
-      }
-      if (isLogin) {
+        const res = await loginUser({ email: form.email, password: form.password });
         onLoginSuccess(res.data.user, res.data.token);
       } else {
-        alert('✅ Account created successfully! Please log in.');
+        const res = await registerUser({
+          name: form.name,
+          email: form.email,
+          password: form.password
+        });
+        // Auto switch to login after successful signup
+        setError('');
+        alert('✅ Account created! Please log in now.');
         setIsLogin(true);
+        setForm({ name: '', email: form.email, password: '' });
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed. Please check your inputs.');
+      console.error('Auth error:', err);
+      const msg = err.response?.data?.message || err.response?.data?.error || 'Server error. Please try again.';
+      setError(msg);
     }
     setLoading(false);
   };
 
   return (
-    <div className="container" style={{ maxWidth: '420px', marginTop: '3rem' }}>
-      <div className="card">
-        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#4f46e5' }}>
-          {isLogin ? '🔐 User Login' : '📝 Create Account'}
+    <div className="auth-wrapper">
+      {/* Animated Background Orbs */}
+      <div className="bg-orb orb-1"></div>
+      <div className="bg-orb orb-2"></div>
+      <div className="bg-orb orb-3"></div>
+
+      <div className="auth-card card">
+        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#a855f7' }}>
+          {isLogin ? '🔐 Login' : '📝 Create Account'}
         </h2>
 
-        {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+        {error && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#fca5a5',
+            padding: '0.8rem',
+            borderRadius: '10px',
+            marginBottom: '1rem',
+            fontSize: '0.9rem',
+            border: '1px solid rgba(239, 68, 68, 0.3)'
+          }}>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {!isLogin && (
             <div className="form-group">
-              <label>Full Name</label>
-              <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Shourya Malhotra" required />
+              <label>Name</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="Name"
+                required
+              />
             </div>
           )}
           <div className="form-group">
-            <label>Email Address</label>
-            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" required />
+            <label>Email</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+              placeholder="Email"
+              required
+            />
           </div>
           <div className="form-group">
             <label>Password</label>
-            <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="••••••••" required />
+            <input
+              type="password"
+              value={form.password}
+              onChange={e => setForm({ ...form, password: e.target.value })}
+              placeholder="Password"
+              required
+            />
           </div>
 
           <button type="submit" className="btn" style={{ width: '100%', marginTop: '0.5rem' }} disabled={loading}>
-            {loading ? 'Processing...' : isLogin ? 'Login' : 'Sign Up'}
+            {loading ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.9rem', color: '#64748b' }}>
+        <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.9rem', color: '#94a3b8' }}>
           {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <span style={{ color: '#4f46e5', fontWeight: 700, cursor: 'pointer' }} onClick={() => { setIsLogin(!isLogin); setError(''); }}>
+          <span
+            style={{ color: '#a855f7', fontWeight: 700, cursor: 'pointer' }}
+            onClick={() => { setIsLogin(!isLogin); setError(''); }}
+          >
             {isLogin ? 'Sign Up' : 'Login'}
           </span>
         </p>
