@@ -4,37 +4,26 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from models.clothing import User
 from database.db import db
-from sqlalchemy.exc import OperationalError, DBAPIError
 
 auth_bp = Blueprint('auth', __name__)
 JWT_SECRET = os.getenv('JWT_SECRET', 'shourya_wardrobe_secret_9988')
 
-def safe_db_execute(func):
-    """Decorator to retry DB query if Neon dropped the connection"""
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (OperationalError, DBAPIError) as e:
-            print("🔄 Stale DB connection detected. Retrying...")
-            db.session.rollback()
-            return func(*args, **kwargs)
-    return wrapper
-
 @auth_bp.route('/register', methods=['POST'])
 def register():
     try:
-        data = request.get_json() or {}
+        # Accepts both JSON body and Form data cleanly
+        data = request.get_json(force=True, silent=True) or request.form or {}
         name = (data.get('name') or '').strip()
         email = (data.get('email') or '').strip().lower()
-        password = data.get('password') or ''
+        password = (data.get('password') or '').strip()
 
         if not name or not email or not password:
-            return jsonify({'message': 'Name, email and password are required'}), 400
+            return jsonify({'message': 'Name, email, and password are required.'}), 400
 
         if len(password) < 4:
-            return jsonify({'message': 'Password must be at least 4 characters'}), 400
+            return jsonify({'message': 'Password must be at least 4 characters long.'}), 400
 
-        # Safe lookup with fallback rollback
+        # Check if email is already taken
         try:
             existing = User.query.filter_by(email=email).first()
         except Exception:
@@ -42,14 +31,16 @@ def register():
             existing = User.query.filter_by(email=email).first()
 
         if existing:
-            return jsonify({'message': 'Email already registered. Please log in.'}), 400
+            return jsonify({'message': 'An account with this email already exists. Please log in.'}), 400
 
+        # Create new user
         user = User(name=name, email=email)
         user.set_password(password)
         
         db.session.add(user)
         db.session.commit()
 
+        # Generate JWT token so user is automatically logged in upon signup
         token = jwt.encode({
             'user_id': user.id,
             'exp': datetime.utcnow() + timedelta(days=30)
@@ -66,19 +57,19 @@ def register():
 
     except Exception as e:
         db.session.rollback()
-        print(f"Register error: {e}")
-        return jsonify({'message': f'Registration failed: {str(e)}'}), 500
+        print(f"❌ Register Error: {e}")
+        return jsonify({'message': f'Server Error: {str(e)}'}), 500
 
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or request.form or {}
         email = (data.get('email') or '').strip().lower()
-        password = data.get('password') or ''
+        password = (data.get('password') or '').strip()
 
         if not email or not password:
-            return jsonify({'message': 'Email and password are required'}), 400
+            return jsonify({'message': 'Email and password are required.'}), 400
 
         try:
             user = User.query.filter_by(email=email).first()
@@ -87,7 +78,7 @@ def login():
             user = User.query.filter_by(email=email).first()
 
         if not user or not user.check_password(password):
-            return jsonify({'message': 'Invalid email or password'}), 401
+            return jsonify({'message': 'Invalid email or password.'}), 401
 
         token = jwt.encode({
             'user_id': user.id,
@@ -105,5 +96,5 @@ def login():
 
     except Exception as e:
         db.session.rollback()
-        print(f"Login error: {e}")
-        return jsonify({'message': f'Login failed: {str(e)}'}), 500
+        print(f"❌ Login Error: {e}")
+        return jsonify({'message': f'Server Error: {str(e)}'}), 500

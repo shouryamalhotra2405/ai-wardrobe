@@ -18,31 +18,28 @@ def create_app():
     
     os.makedirs(app.instance_path, exist_ok=True)
     
-    # Get and sanitize DATABASE_URL
+    # Get and sanitize DATABASE_URL for Neon PostgreSQL
     db_url = os.getenv('DATABASE_URL', '')
     
     if db_url:
-        # Convert postgres:// to postgresql+psycopg2://
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
         elif db_url.startswith("postgresql://") and "+psycopg" not in db_url:
             db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
         
-        # 🛠️ CRITICAL FIX: Remove '-pooler' from Neon host so SQLAlchemy uses Direct SSL Connection
+        # Remove '-pooler' from Neon host to use Direct Connection
         db_url = db_url.replace("-pooler.", ".")
         
-        # Remove unsupported channel_binding params
+        # Remove unsupported parameters
         db_url = re.sub(r'[&?]channel_binding=[^&]*', '', db_url)
         
-        # Ensure sslmode=require
         if 'sslmode=' not in db_url:
             sep = '&' if '?' in db_url else '?'
             db_url = f"{db_url}{sep}sslmode=require"
-        
-        # Engine config for Neon Direct Connection
+            
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            'pool_pre_ping': True,    # Test connection before running query
-            'pool_recycle': 60,       # Recycle connections every 60s
+            'pool_pre_ping': True,
+            'pool_recycle': 60,
             'pool_timeout': 30,
             'max_overflow': 10
         }
@@ -58,7 +55,7 @@ def create_app():
     CORS(app)
     db.init_app(app)
     
-    # Register blueprints
+    # Register API blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(wardrobe_bp, url_prefix='/api/wardrobe')
     app.register_blueprint(suggestion_bp, url_prefix='/api/suggestions')
@@ -79,12 +76,13 @@ def create_app():
                 return send_from_directory(app.static_folder, 'index.html')
             return jsonify({'message': 'API running.'}), 200
 
+    # Ensure Database Tables Exist
     with app.app_context():
         try:
             db.create_all()
-            print("✅ Neon PostgreSQL Direct Connection established!")
+            print("✅ Database tables initialized successfully!")
         except Exception as e:
-            print(f"⚠️ Database init notice: {e}")
+            print(f"⚠️ Database initialization notice: {e}")
     
     return app
 
